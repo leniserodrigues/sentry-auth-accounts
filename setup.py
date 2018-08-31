@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-sentry-auth-google
+sentry-auth-accounts
 ==================
 
 :copyright: (c) 2016 Functional Software, Inc
@@ -17,14 +17,14 @@ tests_require = [
 ]
 
 setup(
-    name='sentry-auth-google',
-    version='0.2.0.dev0',
-    author='Sentry',
-    author_email='support@getsentry.com',
-    url='https://www.getsentry.com',
-    description='Google authentication provider for Sentry',
+    name='sentry-auth-accounts',
+    version='0.1.0',
+    author='Backoffice Monitoracao',
+    author_email='backofficeprojetos@corp.globo.com',
+    url='',
+    description='Accounts authentication provider for Sentry',
     long_description=__doc__,
-    license='Apache 2.0',
+    license='',
     packages=find_packages(exclude=['tests']),
     zip_safe=False,
     install_requires=install_requires,
@@ -33,7 +33,7 @@ setup(
     include_package_data=True,
     entry_points={
         'sentry.apps': [
-            'auth_google = sentry_auth_google',
+            'auth_accounts = sentry_auth_accounts',
         ],
     },
     classifiers=[

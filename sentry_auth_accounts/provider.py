@@ -8,20 +8,20 @@ from .constants import (
     AUTHORIZE_URL, ACCESS_TOKEN_URL, CLIENT_ID, CLIENT_SECRET, DATA_VERSION,
     SCOPE
 )
-from .views import FetchUser, GoogleConfigureView
+from .views import FetchUser, AccountsConfigureView
 
 
-class GoogleOAuth2Login(OAuth2Login):
+class AccountsOAuth2Login(OAuth2Login):
     authorize_url = AUTHORIZE_URL
     client_id = CLIENT_ID
     scope = SCOPE
 
     def __init__(self, domains=None):
         self.domains = domains
-        super(GoogleOAuth2Login, self).__init__()
+        super(AccountsOAuth2Login, self).__init__()
 
     def get_authorize_params(self, state, redirect_uri):
-        params = super(GoogleOAuth2Login, self).get_authorize_params(
+        params = super(AccountsOAuth2Login, self).get_authorize_params(
             state, redirect_uri
         )
         # TODO(dcramer): ideally we could look at the current resulting state
@@ -32,8 +32,8 @@ class GoogleOAuth2Login(OAuth2Login):
         return params
 
 
-class GoogleOAuth2Provider(OAuth2Provider):
-    name = 'Google'
+class AccountsOAuth2Provider(OAuth2Provider):
+    name = 'Backstage Accounts'
     client_id = CLIENT_ID
     client_secret = CLIENT_SECRET
 
@@ -53,14 +53,14 @@ class GoogleOAuth2Provider(OAuth2Provider):
         else:
             version = None
         self.version = version
-        super(GoogleOAuth2Provider, self).__init__(**config)
+        super(AccountsOAuth2Provider, self).__init__(**config)
 
     def get_configure_view(self):
-        return GoogleConfigureView.as_view()
+        return AccountsConfigureView.as_view()
 
     def get_auth_pipeline(self):
         return [
-            GoogleOAuth2Login(domains=self.domains),
+            AccountsOAuth2Login(domains=self.domains),
             OAuth2Callback(
                 access_token_url=ACCESS_TOKEN_URL,
                 client_id=self.client_id,
@@ -82,23 +82,18 @@ class GoogleOAuth2Provider(OAuth2Provider):
         }
 
     def build_identity(self, state):
-        # https://developers.google.com/identity/protocols/OpenIDConnect#server-flow
         # data.user => {
-        #      "iss":"accounts.google.com",
-        #      "at_hash":"HK6E_P6Dh8Y93mRNtsDB1Q",
-        #      "email_verified":"true",
-        #      "sub":"10769150350006150715113082367",
-        #      "azp":"1234987819200.apps.googleusercontent.com",
-        #      "email":"jsmith@example.com",
-        #      "aud":"1234987819200.apps.googleusercontent.com",
-        #      "iat":1353601026,
-        #      "exp":1353604926,
-        #      "hd":"example.com"
+        #      "name": "",
+        #      "surname": "",
+        #      "username": "",
+        #      "email": "",
+        #      "picture": "",
+        #      "role_ids": [],
+        #      "groups": []
         # }
         data = state['data']
         user_data = state['user']
-        # TODO(dcramer): we should move towards using user_data['sub'] as the
-        # primary key per the Google docs
+
         return {
             'id': user_data['email'],
             'email': user_data['email'],

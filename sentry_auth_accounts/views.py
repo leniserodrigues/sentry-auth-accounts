@@ -10,7 +10,7 @@ from .constants import (
 )
 from .utils import urlsafe_b64decode
 
-logger = logging.getLogger('sentry.auth.google')
+logger = logging.getLogger('sentry.auth.accounts')
 
 
 class FetchUser(AuthView):
@@ -65,14 +65,14 @@ class FetchUser(AuthView):
         return helper.next_step()
 
 
-class GoogleConfigureView(ConfigureView):
+class AccountsConfigureView(ConfigureView):
     def dispatch(self, request, organization, auth_provider):
         config = auth_provider.config
         if config.get('domain'):
             domains = [config['domain']]
         else:
             domains = config.get('domains')
-        return self.render('sentry_auth_google/configure.html', {
+        return self.render('sentry_auth_accounts/configure.html', {
             'domains': domains or [],
         })
 
