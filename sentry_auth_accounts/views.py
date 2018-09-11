@@ -2,13 +2,17 @@ from __future__ import absolute_import, print_function
 
 import logging
 
+from requests import HTTPError
+
 from sentry.auth.view import AuthView, ConfigureView
+from sentry.http import safe_urlopen, safe_urlread
 from sentry.utils import json
 
+from urllib import urlencode
+
 from .constants import (
-    DOMAIN_BLOCKLIST, ERR_INVALID_DOMAIN, ERR_INVALID_RESPONSE,
+    DOMAIN_BLOCKLIST, ERR_INVALID_DOMAIN, ERR_INVALID_RESPONSE, USER_DETAILS_ENDPOINT
 )
-from .utils import urlsafe_b64decode
 
 logger = logging.getLogger('sentry.auth.accounts')
 
@@ -23,37 +27,35 @@ class FetchUser(AuthView):
         data = helper.fetch_state('data')
 
         try:
-            id_token = data['id_token']
+            access_token = helper.fetch_state('data')['access_token']
+            req = safe_urlopen(USER_DETAILS_ENDPOINT, method='GET', headers={'Authorization': 'Bearer ' + access_token})
+            if req.status_code != 200:
+                raise HTTPError
+        except HTTPError:
+            logger.error('Request to %s returned %s' % (USER_DETAILS_ENDPOINT, req.reason))
+            return helper.error(ERR_INVALID_RESPONSE)
         except KeyError:
-            logger.error('Missing id_token in OAuth response: %s' % data)
+            logger.error('Unable to catch information.')
             return helper.error(ERR_INVALID_RESPONSE)
 
         try:
-            _, payload, _ = map(urlsafe_b64decode, id_token.split('.', 2))
+            payload = req.json()
         except Exception as exc:
-            logger.error(u'Unable to decode id_token: %s' % exc, exc_info=True)
-            return helper.error(ERR_INVALID_RESPONSE)
-
-        try:
-            payload = json.loads(payload)
-        except Exception as exc:
-            logger.error(u'Unable to decode id_token payload: %s' % exc, exc_info=True)
+            logger.error('Unable to catch response as json %s' % exc, exc_info=True)
             return helper.error(ERR_INVALID_RESPONSE)
 
         if not payload.get('email'):
-            logger.error('Missing email in id_token payload: %s' % id_token)
+            logger.error('Missing email in user_info payload: %s' % payload)
             return helper.error(ERR_INVALID_RESPONSE)
 
-        # support legacy style domains with pure domain regexp
-        if self.version is None:
-            domain = extract_domain(payload['email'])
-        else:
-            domain = payload.get('hd')
+        domain = extract_domain(payload['email'])
 
         if domain is None:
+            logger.error('No domain found')
             return helper.error(ERR_INVALID_DOMAIN % (domain,))
 
         if domain in DOMAIN_BLOCKLIST:
+            logger.error('Domain not allowed')
             return helper.error(ERR_INVALID_DOMAIN % (domain,))
 
         if self.domains and domain not in self.domains:
